@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Question from "@/lib/models/Question";
 import Attempt from "@/lib/models/Attempt";
+import { questionsData } from "@/lib/questions-data";
+import { attemptStore, generateId } from "@/lib/memory-store";
 
 interface SubmitAnswer {
   questionNo: number;
@@ -19,7 +21,6 @@ interface SubmitBody {
 
 export async function POST(req: NextRequest) {
   try {
-    await dbConnect();
     const body: SubmitBody = await req.json();
     const { playerName, startedAt, finishedAt, totalTimeSec, answers } = body;
 
@@ -27,10 +28,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const questions = await Question.find({}).lean();
-    const answerMap = new Map(
-      questions.map((q) => [q.questionNo, q.correctOption])
-    );
+    const db = await dbConnect();
+
+    let answerMap: Map<number, string>;
+
+    if (db) {
+      const questions = await Question.find({}).lean();
+      if (questions.length > 0) {
+        answerMap = new Map(questions.map((q) => [q.questionNo, q.correctOption]));
+      } else {
+        answerMap = new Map(questionsData.map((q) => [q.questionNo, q.correctOption]));
+      }
+    } else {
+      answerMap = new Map(questionsData.map((q) => [q.questionNo, q.correctOption]));
+    }
 
     let correct = 0;
     let wrong = 0;
@@ -48,7 +59,28 @@ export async function POST(req: NextRequest) {
 
     const score = correct * 2 - wrong * 0.5;
 
-    const attempt = await Attempt.create({
+    if (db) {
+      try {
+        const attempt = await Attempt.create({
+          playerName,
+          startedAt: new Date(startedAt),
+          finishedAt: new Date(finishedAt),
+          totalTimeSec,
+          answers,
+          score,
+          correct,
+          wrong,
+          unanswered,
+        });
+        return NextResponse.json({ success: true, attemptId: attempt._id, score, correct, wrong, unanswered });
+      } catch {
+        // fall through to in-memory
+      }
+    }
+
+    const attemptId = generateId();
+    attemptStore.set(attemptId, {
+      _id: attemptId,
       playerName,
       startedAt: new Date(startedAt),
       finishedAt: new Date(finishedAt),
@@ -60,7 +92,7 @@ export async function POST(req: NextRequest) {
       unanswered,
     });
 
-    return NextResponse.json({ success: true, attemptId: attempt._id, score, correct, wrong, unanswered });
+    return NextResponse.json({ success: true, attemptId, score, correct, wrong, unanswered });
   } catch (error) {
     console.error("Submit error:", error);
     return NextResponse.json({ error: "Submission failed" }, { status: 500 });

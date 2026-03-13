@@ -65,9 +65,9 @@ export default function QuizPage() {
 
     fetch("/api/questions")
       .then((res) => res.json())
-      .then((data: Question[]) => {
-        if (!data || data.length === 0) {
-          alert("No questions found. Please seed the database first via POST /api/seed");
+      .then((data) => {
+        if (!data || !Array.isArray(data) || data.length === 0) {
+          alert("No questions found. Please check the server.");
           router.replace("/");
           return;
         }

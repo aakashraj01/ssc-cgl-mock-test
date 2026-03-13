@@ -2,35 +2,69 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Question from "@/lib/models/Question";
 import Attempt from "@/lib/models/Attempt";
+import { questionsData } from "@/lib/questions-data";
+import { attemptStore } from "@/lib/memory-store";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await dbConnect();
     const { id } = await params;
-    const attempt = await Attempt.findById(id).lean();
+    const db = await dbConnect();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let attempt: any = null;
+
+    if (db && !id.startsWith("local_")) {
+      try {
+        attempt = await Attempt.findById(id).lean();
+      } catch {
+        // fall through to memory store
+      }
+    }
+
+    if (!attempt) {
+      const stored = attemptStore.get(id);
+      if (stored) {
+        attempt = stored;
+      }
+    }
+
     if (!attempt) {
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
 
-    const questions = await Question.find({}).sort({ questionNo: 1 }).lean();
+    let questionsMap: Map<number, {
+      questionNo: number;
+      part: string;
+      partName: string;
+      questionText: string;
+      options: { label: string; text: string }[];
+      correctOption: string;
+      passage?: string;
+    }>;
 
-    const questionsMap = new Map(
-      questions.map((q) => [
-        q.questionNo,
-        {
-          questionNo: q.questionNo,
-          part: q.part,
-          partName: q.partName,
-          questionText: q.questionText,
-          options: q.options,
-          correctOption: q.correctOption,
-          passage: q.passage,
-        },
-      ])
-    );
+    if (db) {
+      const questions = await Question.find({}).sort({ questionNo: 1 }).lean();
+      if (questions.length > 0) {
+        questionsMap = new Map(
+          questions.map((q) => [q.questionNo, {
+            questionNo: q.questionNo,
+            part: q.part,
+            partName: q.partName,
+            questionText: q.questionText,
+            options: q.options,
+            correctOption: q.correctOption,
+            passage: q.passage,
+          }])
+        );
+      } else {
+        questionsMap = new Map(questionsData.map((q) => [q.questionNo, q]));
+      }
+    } else {
+      questionsMap = new Map(questionsData.map((q) => [q.questionNo, q]));
+    }
 
     const detailedAnswers = attempt.answers.map((ans: { questionNo: number; selectedOption: string | null; timeTakenSec: number }) => {
       const q = questionsMap.get(ans.questionNo);
@@ -51,14 +85,17 @@ export async function GET(
     });
 
     const parts = ["A", "B", "C", "D"];
+    const partNames: Record<string, string> = {
+      A: "General Intelligence and Reasoning",
+      B: "General Awareness",
+      C: "Quantitative Aptitude",
+      D: "English Comprehension",
+    };
     const sectionBreakdown = parts.map((p) => {
       const sectionAnswers = detailedAnswers.filter((a: { part: string }) => a.part === p);
-      const partName =
-        sectionAnswers[0]?.partName ||
-        { A: "General Intelligence and Reasoning", B: "General Awareness", C: "Quantitative Aptitude", D: "English Comprehension" }[p];
       return {
         part: p,
-        partName,
+        partName: sectionAnswers[0]?.partName || partNames[p],
         total: sectionAnswers.length,
         correct: sectionAnswers.filter((a: { status: string }) => a.status === "correct").length,
         wrong: sectionAnswers.filter((a: { status: string }) => a.status === "wrong").length,
