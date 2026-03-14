@@ -63,7 +63,8 @@ export default function QuizPage() {
       }
     }
 
-    fetch("/api/questions")
+    const paperId = sessionStorage.getItem("selectedPaper") || "";
+    fetch(`/api/questions?paperId=${encodeURIComponent(paperId)}`)
       .then((res) => res.json())
       .then((data) => {
         if (!data || !Array.isArray(data) || data.length === 0) {
@@ -153,11 +154,13 @@ export default function QuizPage() {
     recordTimeForCurrent();
 
     const playerName = sessionStorage.getItem("playerName") || "Anonymous";
+    const paperId = sessionStorage.getItem("selectedPaper") || "";
     const now = new Date();
     const totalTimeSec = Math.floor((Date.now() - startTime) / 1000);
 
     const payload = {
       playerName,
+      paperId,
       startedAt: new Date(startTime).toISOString(),
       finishedAt: now.toISOString(),
       totalTimeSec: Math.min(totalTimeSec, TOTAL_TIME),

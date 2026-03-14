@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Question from "@/lib/models/Question";
 import Attempt from "@/lib/models/Attempt";
-import { questionsData } from "@/lib/questions-data";
+import { questionsData, papers } from "@/lib/questions-data";
 import { attemptStore, generateId } from "@/lib/memory-store";
 
 interface SubmitAnswer {
@@ -17,30 +17,34 @@ interface SubmitBody {
   finishedAt: string;
   totalTimeSec: number;
   answers: SubmitAnswer[];
+  paperId?: string;
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body: SubmitBody = await req.json();
-    const { playerName, startedAt, finishedAt, totalTimeSec, answers } = body;
+    const { playerName, startedAt, finishedAt, totalTimeSec, answers, paperId } = body;
 
     if (!playerName || !answers || answers.length === 0) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const paper = papers.find((p) => p.id === paperId);
+    const selectedQuestions = paper ? paper.questions : questionsData;
+
     const db = await dbConnect();
 
     let answerMap: Map<number, string>;
 
-    if (db) {
+    if (db && !paperId) {
       const questions = await Question.find({}).lean();
       if (questions.length > 0) {
         answerMap = new Map(questions.map((q) => [q.questionNo, q.correctOption]));
       } else {
-        answerMap = new Map(questionsData.map((q) => [q.questionNo, q.correctOption]));
+        answerMap = new Map(selectedQuestions.map((q) => [q.questionNo, q.correctOption]));
       }
     } else {
-      answerMap = new Map(questionsData.map((q) => [q.questionNo, q.correctOption]));
+      answerMap = new Map(selectedQuestions.map((q) => [q.questionNo, q.correctOption]));
     }
 
     let correct = 0;
@@ -82,6 +86,7 @@ export async function POST(req: NextRequest) {
     attemptStore.set(attemptId, {
       _id: attemptId,
       playerName,
+      paperId,
       startedAt: new Date(startedAt),
       finishedAt: new Date(finishedAt),
       totalTimeSec,

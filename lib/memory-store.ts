@@ -1,6 +1,7 @@
 export interface StoredAttempt {
   _id: string;
   playerName: string;
+  paperId?: string;
   startedAt: Date;
   finishedAt: Date;
   totalTimeSec: number;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Question from "@/lib/models/Question";
 import Attempt from "@/lib/models/Attempt";
-import { questionsData } from "@/lib/questions-data";
+import { questionsData, papers } from "@/lib/questions-data";
 import { attemptStore } from "@/lib/memory-store";
 
 export async function GET(
@@ -35,6 +35,9 @@ export async function GET(
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
 
+    const paper = papers.find((p) => p.id === attempt.paperId);
+    const selectedQuestions = paper ? paper.questions : questionsData;
+
     let questionsMap: Map<number, {
       questionNo: number;
       part: string;
@@ -45,7 +48,7 @@ export async function GET(
       passage?: string;
     }>;
 
-    if (db) {
+    if (db && !attempt.paperId) {
       const questions = await Question.find({}).sort({ questionNo: 1 }).lean();
       if (questions.length > 0) {
         questionsMap = new Map(
@@ -60,10 +63,10 @@ export async function GET(
           }])
         );
       } else {
-        questionsMap = new Map(questionsData.map((q) => [q.questionNo, q]));
+        questionsMap = new Map(selectedQuestions.map((q) => [q.questionNo, q]));
       }
     } else {
-      questionsMap = new Map(questionsData.map((q) => [q.questionNo, q]));
+      questionsMap = new Map(selectedQuestions.map((q) => [q.questionNo, q]));
     }
 
     const detailedAnswers = attempt.answers.map((ans: { questionNo: number; selectedOption: string | null; timeTakenSec: number }) => {

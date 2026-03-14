@@ -1,13 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Question from "@/lib/models/Question";
-import { questionsData } from "@/lib/questions-data";
+import { papers, questionsData } from "@/lib/questions-data";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const paperId = req.nextUrl.searchParams.get("paperId");
+
+  const paper = papers.find((p) => p.id === paperId);
+  const selectedQuestions = paper ? paper.questions : questionsData;
+
   try {
     const db = await dbConnect();
 
-    if (db) {
+    if (db && !paperId) {
       const questions = await Question.find({})
         .select("-correctOption")
         .sort({ questionNo: 1 })
@@ -17,8 +22,8 @@ export async function GET() {
       }
     }
 
-    const fallback = questionsData.map((q, i) => ({
-      _id: `local_${i}`,
+    const fallback = selectedQuestions.map((q, i) => ({
+      _id: `${paperId || "default"}_${i}`,
       questionNo: q.questionNo,
       part: q.part,
       partName: q.partName,
@@ -29,8 +34,8 @@ export async function GET() {
     return NextResponse.json(fallback);
   } catch (error) {
     console.error("Fetch questions error:", error);
-    const fallback = questionsData.map((q, i) => ({
-      _id: `local_${i}`,
+    const fallback = selectedQuestions.map((q, i) => ({
+      _id: `${paperId || "default"}_${i}`,
       questionNo: q.questionNo,
       part: q.part,
       partName: q.partName,

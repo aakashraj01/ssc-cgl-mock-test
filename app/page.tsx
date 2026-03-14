@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { papers } from "@/lib/questions-data";
 
 export default function HomePage() {
   const [name, setName] = useState("");
+  const [selectedPaper, setSelectedPaper] = useState(papers[0].id);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -16,8 +18,11 @@ export default function HomePage() {
     if (!name.trim()) return;
     setLoading(true);
     sessionStorage.setItem("playerName", name.trim());
+    sessionStorage.setItem("selectedPaper", selectedPaper);
     router.push("/quiz");
   };
+
+  const currentPaper = papers.find((p) => p.id === selectedPaper) || papers[0];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
@@ -30,6 +35,32 @@ export default function HomePage() {
             Computer Based Test Simulator — Tier 1
           </p>
         </div>
+
+        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-xl">Select Paper</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {papers.map((paper) => (
+                <button
+                  key={paper.id}
+                  onClick={() => setSelectedPaper(paper.id)}
+                  className={`w-full text-left p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                    selectedPaper === paper.id
+                      ? "border-blue-500 bg-blue-50 shadow-sm"
+                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <p className="font-semibold text-gray-900">{paper.title}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {paper.date} | {paper.shift} | {paper.questions.length} Questions
+                  </p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="shadow-xl border-0 bg-white/80 backdrop-blur">
           <CardHeader>
@@ -101,14 +132,14 @@ export default function HomePage() {
                 disabled={!name.trim() || loading}
                 className="w-full h-12 text-lg font-semibold bg-blue-600 hover:bg-blue-700 cursor-pointer"
               >
-                {loading ? "Loading Quiz..." : "Start Exam"}
+                {loading ? "Loading Quiz..." : `Start Exam — ${currentPaper.date}`}
               </Button>
             </div>
           </CardContent>
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          SSC CGL Tier 1 — 12 Sep 2025 (Shift-1) | For practice purposes only
+          {currentPaper.title} | For practice purposes only
         </p>
       </div>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Badge } from "@/components/ui/badge";
 
 interface Option {
@@ -21,6 +22,21 @@ interface QuestionDisplayProps {
   question: Question;
   selectedOption: string | null;
   onSelect: (label: string) => void;
+}
+
+function renderRichText(text: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      const inner = part.slice(2, -2);
+      return (
+        <span key={i} className="font-bold text-blue-700 bg-blue-50 px-1 rounded">
+          {inner}
+        </span>
+      );
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
 }
 
 export default function QuestionDisplay({
@@ -50,7 +66,7 @@ export default function QuestionDisplay({
       )}
 
       <p className="text-base leading-relaxed whitespace-pre-line font-medium">
-        {question.questionText}
+        {renderRichText(question.questionText)}
       </p>
 
       <div className="space-y-2">
@@ -73,7 +89,7 @@ export default function QuestionDisplay({
             >
               {opt.label}
             </span>
-            <span className="text-sm">{opt.text}</span>
+            <span className="text-sm">{renderRichText(opt.text)}</span>
           </button>
         ))}
       </div>
