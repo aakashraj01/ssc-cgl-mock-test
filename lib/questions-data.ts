@@ -1,4 +1,5 @@
 import { paper21Sep } from "./paper-21-sep";
+import { paper26Sep } from "./paper-26-sep";
 
 export interface QuestionData {
   questionNo: number;
@@ -2660,6 +2661,13 @@ const paper15Sep: QuestionData[] = [
 // Paper registry
 // =====================================================================
 export const papers: PaperInfo[] = [
+  {
+    id: "26-sep-2024-shift-1",
+    title: "SSC CGL 26 Sep 2024 (Shift-1)",
+    date: "26 Sep 2024",
+    shift: "Shift-1 (09:00 AM)",
+    questions: paper26Sep,
+  },
   {
     id: "21-sep-2025-shift-1",
     title: "SSC CGL 21 Sep 2025 (Shift-1)",
