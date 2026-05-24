@@ -1,3 +1,4 @@
+import { paper17Sep } from "./paper-17-sep";
 import { paper21Sep } from "./paper-21-sep";
 import { paper26Sep } from "./paper-26-sep";
 
@@ -2661,6 +2662,13 @@ const paper15Sep: QuestionData[] = [
 // Paper registry
 // =====================================================================
 export const papers: PaperInfo[] = [
+  {
+    id: "17-sep-2025-shift-1",
+    title: "SSC CGL 17 Sep 2025 (Shift-1)",
+    date: "17 Sep 2025",
+    shift: "Shift-1 (09:00 AM)",
+    questions: paper17Sep,
+  },
   {
     id: "26-sep-2024-shift-1",
     title: "SSC CGL 26 Sep 2024 (Shift-1)",
